@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Send } from "lucide-react";
+import emailjs from "@emailjs/browser";
+import { useState } from "react";
 
 const formSchema = z.object({
   firstName: z.string()
@@ -51,6 +53,7 @@ type FormValues = z.infer<typeof formSchema>;
 
 const ContactForm = () => {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -64,16 +67,44 @@ const ContactForm = () => {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    // Here you would typically send the data to your backend
-    console.log("Form submitted:", data);
+  const onSubmit = async (data: FormValues) => {
+    setIsSubmitting(true);
     
-    toast({
-      title: "Inquiry Received!",
-      description: "We'll get back to you within 24 hours.",
-    });
-    
-    form.reset();
+    try {
+      const templateParams = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        service: data.service === "drone-inspections" ? "Drone Inspections" : "Drone Photography",
+        message: data.message,
+        from_name: "ENORD UAV SOLUTIONS",
+        reply_to: data.email,
+      };
+
+      await emailjs.send(
+        "service_3nkima9",
+        "template_6ft4tsh",
+        templateParams,
+        "PQyMQv2dZ_9fuD-nN"
+      );
+
+      toast({
+        title: "Inquiry Sent!",
+        description: "We'll get back to you within 24 hours.",
+      });
+      
+      form.reset();
+    } catch (error) {
+      console.error("EmailJS error:", error);
+      toast({
+        title: "Failed to send",
+        description: "Please try again or contact us directly at info@enord.com.au",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -179,9 +210,15 @@ const ContactForm = () => {
           )}
         />
 
-        <Button type="submit" size="lg" variant="cta" className="w-full md:w-auto">
+        <Button 
+          type="submit" 
+          size="lg" 
+          variant="cta" 
+          className="w-full md:w-auto"
+          disabled={isSubmitting}
+        >
           <Send className="mr-2 h-4 w-4" />
-          Send Inquiry
+          {isSubmitting ? "Sending..." : "Send Inquiry"}
         </Button>
       </form>
     </Form>

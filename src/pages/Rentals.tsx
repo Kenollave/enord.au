@@ -12,10 +12,10 @@ import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import emailjs from "@emailjs/browser";
+import { useState } from "react";
 import eventImage from "@/assets/event-drone.jpg";
 import heroImage from "@/assets/hero-drone-sydney.jpg";
-import rentalFlexibilityImage from "@/assets/rental-flexibility.jpg";
-import uavSolutionsImage from "@/assets/uav-solutions.jpg";
 import droneMavic3T from "@/assets/drone-mavic-3t.png";
 import droneMavic3Pro from "@/assets/drone-mavic-3-pro.png";
 import droneMavic3Enterprise from "@/assets/drone-mavic-3-enterprise-nobg.png";
@@ -67,6 +67,7 @@ type BookingFormValues = z.infer<typeof bookingSchema>;
 
 const Rentals = () => {
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
@@ -88,13 +89,47 @@ const Rentals = () => {
     document.getElementById("booking-form")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const onSubmit = (data: BookingFormValues) => {
-    console.log("Booking submitted:", data);
-    toast({
-      title: "Booking Request Received",
-      description: "We'll contact you shortly to confirm your drone rental."
-    });
-    form.reset();
+  const onSubmit = async (data: BookingFormValues) => {
+    setIsSubmitting(true);
+    
+    try {
+      const templateParams = {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.mobile,
+        service: `Drone Rental: ${data.droneModel}`,
+        message: `Rental Request Details:
+Drone Model: ${data.droneModel}
+Pickup: ${data.pickupDate} at ${data.pickupTime}
+Return: ${data.returnDate} at ${data.returnTime}
+Licensed: Yes`,
+from_name: "ENORD UAV SOLUTIONS",
+reply_to: data.email,
+      };
+
+      await emailjs.send(
+        "service_3nkima9",
+        "template_6ft4tsh",
+        templateParams,
+        "PQyMQv2dZ_9fuD-nN"
+      );
+
+      toast({
+        title: "Booking Request Sent!",
+        description: "We'll contact you shortly to confirm your drone rental."
+      });
+      form.reset();
+    } catch (error) {
+      console.error("EmailJS error:", error);
+      toast({
+        title: "Failed to send",
+        description: "Please try again or contact us directly at info@enord.com.au",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -537,8 +572,14 @@ const Rentals = () => {
                 </div>
               </div>
 
-              <Button type="submit" variant="cta" size="lg" className="w-full">
-                Submit Booking Request
+              <Button 
+                type="submit" 
+                variant="cta" 
+                size="lg" 
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Sending..." : "Submit Booking Request"}
               </Button>
             </form>
           </div>

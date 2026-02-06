@@ -8,6 +8,7 @@ import { MapPin, Phone, Mail, Clock } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import emailjs from "@emailjs/browser";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -18,11 +19,39 @@ const Contact = () => {
     subject: "",
     message: ""
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Thank you for your message! Our Sydney team will contact you within 24 hours.");
-    setFormData({ firstName: "", lastName: "", email: "", phone: "", subject: "", message: "" });
+    setIsSubmitting(true);
+
+    try {
+      const templateParams = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        service: formData.subject || "General Inquiry",
+        message: formData.message,
+        from_name: "ENORD UAV SOLUTIONS",
+        reply_to: formData.email,
+      };
+
+      await emailjs.send(
+        "service_3nkima9",
+        "template_6ft4tsh",
+        templateParams,
+        "PQyMQv2dZ_9fuD-nN"
+      );
+
+      toast.success("Thank you for your message! Our Sydney team will contact you within 24 hours.");
+      setFormData({ firstName: "", lastName: "", email: "", phone: "", subject: "", message: "" });
+    } catch (error) {
+      console.error("EmailJS error:", error);
+      toast.error("Failed to send. Please try again or contact us directly at info@enord.com.au");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -128,8 +157,14 @@ const Contact = () => {
                       />
                     </div>
 
-                    <Button type="submit" variant="cta" size="lg" className="w-full">
-                      Send Message
+                    <Button 
+                      type="submit" 
+                      variant="cta" 
+                      size="lg" 
+                      className="w-full"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Sending..." : "Send Message"}
                     </Button>
                   </form>
                 </CardContent>
