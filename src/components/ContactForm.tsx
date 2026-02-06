@@ -22,7 +22,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Send } from "lucide-react";
 import emailjs from "@emailjs/browser";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const formSchema = z.object({
   firstName: z.string()
@@ -54,6 +55,8 @@ type FormValues = z.infer<typeof formSchema>;
 const ContactForm = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -68,6 +71,15 @@ const ContactForm = () => {
   });
 
   const onSubmit = async (data: FormValues) => {
+    if (!captchaToken) {
+      toast({
+        title: "Please complete the reCAPTCHA",
+        description: "Click the 'I'm not a robot' checkbox to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -80,6 +92,7 @@ const ContactForm = () => {
         message: data.message,
         from_name: "ENORD UAV SOLUTIONS",
         reply_to: data.email,
+        "g-recaptcha-response": captchaToken,
       };
 
       await emailjs.send(
@@ -95,6 +108,8 @@ const ContactForm = () => {
       });
       
       form.reset();
+      setCaptchaToken(null);
+      recaptchaRef.current?.reset();
     } catch (error) {
       console.error("EmailJS error:", error);
       toast({
@@ -105,6 +120,10 @@ const ContactForm = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const onCaptchaChange = (token: string | null) => {
+    setCaptchaToken(token);
   };
 
   return (
@@ -209,6 +228,14 @@ const ContactForm = () => {
             </FormItem>
           )}
         />
+
+        <div className="flex justify-center">
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey="6Ler5GIsAAAAALAhceB13vwtF7HXkVhT8I8vT8xK"
+            onChange={onCaptchaChange}
+          />
+        </div>
 
         <Button 
           type="submit" 

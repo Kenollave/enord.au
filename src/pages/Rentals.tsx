@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import emailjs from "@emailjs/browser";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
 import eventImage from "@/assets/event-drone.jpg";
 import heroImage from "@/assets/hero-drone-sydney.jpg";
 import droneMavic3T from "@/assets/drone-mavic-3t.png";
@@ -68,6 +69,9 @@ type BookingFormValues = z.infer<typeof bookingSchema>;
 const Rentals = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+  
   const form = useForm<BookingFormValues>({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
@@ -90,6 +94,15 @@ const Rentals = () => {
   };
 
   const onSubmit = async (data: BookingFormValues) => {
+    if (!captchaToken) {
+      toast({
+        title: "Please complete the reCAPTCHA",
+        description: "Click the 'I'm not a robot' checkbox to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -104,8 +117,9 @@ Drone Model: ${data.droneModel}
 Pickup: ${data.pickupDate} at ${data.pickupTime}
 Return: ${data.returnDate} at ${data.returnTime}
 Licensed: Yes`,
-from_name: "ENORD UAV SOLUTIONS",
-reply_to: data.email,
+        from_name: "ENORD UAV SOLUTIONS",
+        reply_to: data.email,
+        "g-recaptcha-response": captchaToken,
       };
 
       await emailjs.send(
@@ -120,6 +134,8 @@ reply_to: data.email,
         description: "We'll contact you shortly to confirm your drone rental."
       });
       form.reset();
+      setCaptchaToken(null);
+      recaptchaRef.current?.reset();
     } catch (error) {
       console.error("EmailJS error:", error);
       toast({
@@ -130,6 +146,10 @@ reply_to: data.email,
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const onCaptchaChange = (token: string | null) => {
+    setCaptchaToken(token);
   };
 
   return (
@@ -570,6 +590,14 @@ reply_to: data.email,
                     <p className="text-sm text-destructive">{form.formState.errors.isLicensed.message}</p>
                   )}
                 </div>
+              </div>
+
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey="6Ler5GIsAAAAALAhceB13vwtF7HXkVhT8I8vT8xK"
+                  onChange={onCaptchaChange}
+                />
               </div>
 
               <Button 

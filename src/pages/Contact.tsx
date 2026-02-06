@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import emailjs from "@emailjs/browser";
+import ReCAPTCHA from "react-google-recaptcha";
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -20,9 +21,17 @@ const Contact = () => {
     message: ""
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!captchaToken) {
+      toast.error("Please complete the reCAPTCHA");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -35,6 +44,7 @@ const Contact = () => {
         message: formData.message,
         from_name: "ENORD UAV SOLUTIONS",
         reply_to: formData.email,
+        "g-recaptcha-response": captchaToken,
       };
 
       await emailjs.send(
@@ -46,6 +56,8 @@ const Contact = () => {
 
       toast.success("Thank you for your message! Our Sydney team will contact you within 24 hours.");
       setFormData({ firstName: "", lastName: "", email: "", phone: "", subject: "", message: "" });
+      setCaptchaToken(null);
+      recaptchaRef.current?.reset();
     } catch (error) {
       console.error("EmailJS error:", error);
       toast.error("Failed to send. Please try again or contact us directly at info@enord.com.au");
@@ -56,6 +68,10 @@ const Contact = () => {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const onCaptchaChange = (token: string | null) => {
+    setCaptchaToken(token);
   };
 
   return (
@@ -154,6 +170,14 @@ const Contact = () => {
                         placeholder="Tell us more about your inquiry..."
                         rows={6}
                         required
+                      />
+                    </div>
+
+                    <div className="flex justify-center">
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey="6Ler5GIsAAAAALAhceB13vwtF7HXkVhT8I8vT8xK"
+                        onChange={onCaptchaChange}
                       />
                     </div>
 
